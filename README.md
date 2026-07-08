@@ -98,7 +98,7 @@ MarginCalculator/
 Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/margin-calculator.git
+git clone https://github.com/Jramo5/margin-calculator.git
 ```
 
 Open:
