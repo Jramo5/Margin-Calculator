@@ -1,13 +1,3 @@
-/* ==========================================================================
-   CALCULADORA DE MÁRGENES Y PRECIO DE MAYOREO
-   --------------------------------------------------------------------------
-   Lógica principal:
-     1) precioUnitario = costo + (costo * margen / 100)
-     2) El descuento sobre el margen SOLO afecta el margen, nunca el costo:
-          nuevoMargen   = margen - (margen * descuentoMargen / 100)
-          precioMayoreo = costo + nuevoMargen
-   ========================================================================== */
-
 (function () {
   'use strict';
 
@@ -37,6 +27,18 @@
   const flowMargin = document.getElementById('flow-margin');
 
   const btnLimpiar = document.getElementById('btn-limpiar');
+
+  const btnModeForward = document.getElementById('btn-mode-forward');
+  const btnModeReverse = document.getElementById('btn-mode-reverse');
+  const modeHint = document.getElementById('mode-hint');
+  const labelCosto = document.getElementById('label-costo');
+  const labelResCosto = document.getElementById('label-res-costo');
+  const labelResPrecioMayoreo = document.getElementById('label-res-precio-mayoreo');
+  const labelResPrecioUnitario = document.getElementById('label-res-precio-unitario');
+
+  // 'forward' = costo conocido -> calcula precio final
+  // 'reverse' = precio final conocido -> calcula costo original
+  let mode = 'forward';
 
   /* ------------------------------------------------------------------ */
   /* Utilidades                                                          */
@@ -174,26 +176,66 @@
       return;
     }
 
-    /* ---------------- Paso 1: Precio unitario ---------------- */
-    const costo = costoRaw;
-    const margenMonto = costo * (margenRaw / 100);
-    const precioUnitario = costo + margenMonto;
+    let costo, margenMonto, precioUnitario, descuentoMonto, margenFinal, precioMayoreo;
 
-    /* ---------------- Paso 2: Precio de mayoreo ----------------
-       El descuento se aplica ÚNICAMENTE sobre el margen agregado,
-       nunca sobre el costo base del producto.
-    ------------------------------------------------------------- */
-    const descuentoMonto = margenMonto * (descuentoRaw / 100);
-    const margenFinal = margenMonto - descuentoMonto;
-    const precioMayoreo = costo + margenFinal;
+    if (mode === 'reverse') {
+      /* ---------------- MODO INVERSO ----------------
+         El campo "costo" en realidad contiene el PRECIO FINAL
+         ya conocido. Acá el margen se calcula como % del PRECIO
+         DE VENTA (margen real), no como % del costo:
+           margenMonto   = precio * margen/100
+           descuentoMonto = margenMonto * descuento/100
+           margenFinal    = margenMonto - descuentoMonto
+           costo          = precio - margenFinal
+      --------------------------------------------------- */
+      precioMayoreo = costoRaw;
 
-    /* ---------------- Pintar resultados ---------------- */
-    updateResult(resCosto, formatCurrency(costo));
+      margenMonto = precioMayoreo * (margenRaw / 100);
+      descuentoMonto = margenMonto * (descuentoRaw / 100);
+      margenFinal = margenMonto - descuentoMonto;
+      costo = precioMayoreo - margenFinal;
+      precioUnitario = precioMayoreo - margenMonto; // costo antes de aplicar el descuento al margen
+
+      if (costo < 0) {
+        setFieldError(
+          inputMargen,
+          errorMargen,
+          'Ese margen supera el precio final; el costo no puede ser negativo.'
+        );
+        resetResults();
+        return;
+      }
+
+    } else {
+      /* ---------------- MODO NORMAL ----------------
+         El costo es el dato conocido; se calcula el precio final.
+         El margen se calcula como % del COSTO (markup).
+      ------------------------------------------------- */
+      costo = costoRaw;
+      margenMonto = costo * (margenRaw / 100);
+      precioUnitario = costo + margenMonto;
+      descuentoMonto = margenMonto * (descuentoRaw / 100);
+      margenFinal = margenMonto - descuentoMonto;
+      precioMayoreo = costo + margenFinal;
+    }
+
+    /* ---------------- Pintar resultados ----------------
+       En modo inverso, el dato que más importa (el costo
+       calculado) se muestra en la fila destacada final;
+       el precio ingresado pasa a la fila superior como referencia.
+    ------------------------------------------------------ */
+    if (mode === 'reverse') {
+      updateResult(resCosto, formatCurrency(precioMayoreo));   // dato ingresado (arriba)
+      updateResult(resPrecioMayoreo, formatCurrency(costo));   // resultado calculado (destacado)
+    } else {
+      updateResult(resCosto, formatCurrency(costo));
+      updateResult(resPrecioMayoreo, formatCurrency(precioMayoreo));
+    }
+
     updateResult(resMargen, formatMoney(margenMonto));
     updateResult(resPrecioUnitario, formatCurrency(precioUnitario));
     updateResult(resDescuento, formatMoney(descuentoMonto));
     updateResult(resMargenFinal, formatMoney(margenFinal));
-    updateResult(resPrecioMayoreo, formatCurrency(precioMayoreo));
 
     /* ---------------- Actualizar barra visual ---------------- */
     updateFlowBar(costo, margenFinal);
@@ -227,6 +269,41 @@
     flowCost.style.width = costPct + '%';
     flowMargin.style.width = marginPct + '%';
   }
+
+  /* ------------------------------------------------------------------ */
+  /* Cambio de modo (Costo → Precio  /  Precio → Costo)                  */
+  /* ------------------------------------------------------------------ */
+  function setMode(newMode) {
+    mode = newMode;
+
+    const isReverse = mode === 'reverse';
+
+    btnModeForward.classList.toggle('active', !isReverse);
+    btnModeReverse.classList.toggle('active', isReverse);
+
+    if (isReverse) {
+      labelCosto.textContent = 'Precio final de venta';
+      modeHint.textContent = 'Conocés el precio final y querés saber cuál fue el costo original (margen calculado sobre el precio de venta).';
+      labelResCosto.textContent = 'Precio final (dato ingresado)';
+      labelResPrecioMayoreo.textContent = 'Costo del producto (calculado)';
+      labelResPrecioUnitario.textContent = 'Costo antes del descuento';
+    } else {
+      labelCosto.textContent = 'Costo del producto';
+      modeHint.textContent = 'Conocés el costo y querés saber el precio final (margen calculado sobre el costo).';
+      labelResCosto.textContent = 'Costo del producto';
+      labelResPrecioMayoreo.textContent = 'Precio de mayoreo';
+      labelResPrecioUnitario.textContent = 'Precio unitario';
+    }
+
+    setFieldError(inputCosto, errorCosto, '');
+    setFieldError(inputMargen, errorMargen, '');
+    setFieldError(inputDescuento, errorDescuento, '');
+
+    calcular();
+  }
+
+  btnModeForward.addEventListener('click', () => setMode('forward'));
+  btnModeReverse.addEventListener('click', () => setMode('reverse'));
 
   /* ------------------------------------------------------------------ */
   /* Eventos                                                             */
