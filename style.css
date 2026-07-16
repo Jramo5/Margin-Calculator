@@ -192,6 +192,48 @@ button{
 }
 
 /* ==========================================================================
+   MODE TOGGLE (Costo → Precio  /  Precio → Costo)
+   ========================================================================== */
+.mode-toggle{
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 12px;
+  background: rgba(148, 163, 184, 0.14);
+  border-radius: var(--radius-sm);
+}
+
+.mode-btn{
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 10px 8px;
+  border-radius: calc(var(--radius-sm) - 4px);
+  cursor: pointer;
+  transition: background 0.25s var(--ease), color 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+
+.mode-btn:hover{
+  color: var(--color-text);
+}
+
+.mode-btn.active{
+  background: var(--color-surface-solid);
+  color: var(--color-primary-dark);
+  box-shadow: var(--shadow-soft);
+}
+
+.mode-hint{
+  font-size: 0.8rem;
+  color: var(--color-text-soft);
+  margin-bottom: 20px;
+}
+
+/* ==========================================================================
    FORM FIELDS
    ========================================================================== */
 .field{
