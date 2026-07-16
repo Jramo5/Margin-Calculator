@@ -40,10 +40,20 @@
 
         <h2 class="panel-title">Datos del producto</h2>
 
+        <div class="mode-toggle" role="group" aria-label="Sentido del cálculo">
+          <button type="button" class="mode-btn active" id="btn-mode-forward" data-mode="forward">
+            Costo → Precio
+          </button>
+          <button type="button" class="mode-btn" id="btn-mode-reverse" data-mode="reverse">
+            Precio → Costo
+          </button>
+        </div>
+        <p class="mode-hint" id="mode-hint">Conocés el costo y querés saber el precio final.</p>
+
         <form id="calc-form" novalidate>
 
           <div class="field">
-            <label for="costo">Costo del producto</label>
+            <label for="costo" id="label-costo">Costo del producto</label>
             <div class="input-wrap">
               <span class="prefix">$</span>
               <input
@@ -110,7 +120,7 @@
         <dl class="results-grid">
 
           <div class="result-row">
-            <dt>Costo del producto</dt>
+            <dt id="label-res-costo">Costo del producto</dt>
             <dd id="res-costo">--</dd>
           </div>
 
@@ -120,7 +130,7 @@
           </div>
 
           <div class="result-row result-highlight">
-            <dt>Precio unitario</dt>
+            <dt id="label-res-precio-unitario">Precio unitario</dt>
             <dd id="res-precio-unitario">--</dd>
           </div>
 
@@ -137,7 +147,7 @@
           </div>
 
           <div class="result-row result-highlight result-final">
-            <dt>Precio de mayoreo</dt>
+            <dt id="label-res-precio-mayoreo">Precio de mayoreo</dt>
             <dd id="res-precio-mayoreo">--</dd>
           </div>
 
