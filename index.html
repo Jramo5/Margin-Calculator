@@ -47,10 +47,16 @@
           <button type="button" class="mode-btn" id="btn-mode-reverse" data-mode="reverse">
             Precio → Costo
           </button>
+          <button type="button" class="mode-btn" id="btn-mode-venta" data-mode="venta">
+            Precio final de venta
+          </button>
         </div>
         <p class="mode-hint" id="mode-hint">Conocés el costo y querés saber el precio final.</p>
 
         <form id="calc-form" novalidate>
+
+          <!-- ===== Campos: modos Costo→Precio / Precio→Costo ===== -->
+          <div id="fields-margen">
 
           <div class="field">
             <label for="costo" id="label-costo">Costo del producto</label>
@@ -100,6 +106,76 @@
             <p class="field-error" id="error-descuento" role="alert"></p>
           </div>
 
+          </div>
+
+          <!-- ===== Campos: modo Precio final de venta ===== -->
+          <div id="fields-venta" class="is-hidden">
+
+            <div class="field">
+              <label for="v-precio">Precio inicial del producto</label>
+              <div class="input-wrap">
+                <span class="prefix">$</span>
+                <input type="text" inputmode="decimal" id="v-precio" placeholder="0.00" autocomplete="off">
+              </div>
+              <p class="field-error" id="error-v-precio" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="v-comision">Comisión (%)</label>
+              <div class="input-wrap">
+                <input type="text" inputmode="decimal" id="v-comision" placeholder="0.00" autocomplete="off">
+                <span class="suffix">%</span>
+              </div>
+              <p class="field-error" id="error-v-comision" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="v-iva">IVA sobre la comisión (%)</label>
+              <div class="input-wrap">
+                <input type="text" inputmode="decimal" id="v-iva" value="13" placeholder="13" autocomplete="off">
+                <span class="suffix">%</span>
+              </div>
+              <p class="field-error" id="error-v-iva" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="v-descuento">Descuento</label>
+              <div class="input-wrap">
+                <input type="text" inputmode="decimal" id="v-descuento" placeholder="0.00" autocomplete="off">
+                <select id="v-descuento-tipo" class="unit-select" aria-label="Tipo de descuento">
+                  <option value="%">%</option>
+                  <option value="$">$</option>
+                </select>
+              </div>
+              <p class="field-error" id="error-v-descuento" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="v-penalizacion">Penalización</label>
+              <div class="input-wrap">
+                <input type="text" inputmode="decimal" id="v-penalizacion" placeholder="0.00" autocomplete="off">
+                <select id="v-penalizacion-tipo" class="unit-select" aria-label="Tipo de penalización">
+                  <option value="%">%</option>
+                  <option value="$">$</option>
+                </select>
+              </div>
+              <p class="field-error" id="error-v-penalizacion" role="alert"></p>
+            </div>
+
+            <div class="field">
+              <label for="v-otro">Otro</label>
+              <div class="input-wrap">
+                <input type="text" inputmode="decimal" id="v-otro" placeholder="0.00" autocomplete="off">
+                <select id="v-otro-tipo" class="unit-select" aria-label="Tipo de otro cargo">
+                  <option value="%">%</option>
+                  <option value="$">$</option>
+                </select>
+              </div>
+              <p class="field-error" id="error-v-otro" role="alert"></p>
+            </div>
+
+          </div>
+
           <div class="actions">
             <button type="submit" class="btn btn-primary">
               <span>Calcular</span>
@@ -117,7 +193,7 @@
 
         <h2 class="panel-title">Desglose de precios</h2>
 
-        <dl class="results-grid">
+        <dl class="results-grid" id="results-margen">
 
           <div class="result-row">
             <dt id="label-res-costo">Costo del producto</dt>
@@ -153,8 +229,65 @@
 
         </dl>
 
+        <!-- Resultados del modo "Precio final de venta" -->
+        <dl class="results-grid is-hidden" id="results-venta">
+
+          <div class="result-row">
+            <dt>Precio inicial del producto</dt>
+            <dd id="v-res-precio">--</dd>
+          </div>
+
+          <div class="result-row">
+            <dt>Comisión</dt>
+            <dd id="v-res-comision">--</dd>
+          </div>
+
+          <div class="result-row">
+            <dt>IVA sobre la comisión</dt>
+            <dd id="v-res-iva">--</dd>
+          </div>
+
+          <div class="result-row">
+            <dt>Otro</dt>
+            <dd id="v-res-otro">--</dd>
+          </div>
+
+          <div class="result-row">
+            <dt>Total de descuento (comisión + IVA + otro)</dt>
+            <dd id="v-res-total-descuento">--</dd>
+          </div>
+
+          <div class="result-row result-highlight">
+            <dt>Precio con comisión</dt>
+            <dd id="v-res-subtotal">--</dd>
+          </div>
+
+          <div class="result-divider" role="presentation"></div>
+
+          <div class="result-row">
+            <dt>Penalización</dt>
+            <dd id="v-res-penalizacion">--</dd>
+          </div>
+
+          <div class="result-row">
+            <dt>Descuento</dt>
+            <dd id="v-res-descuento">--</dd>
+          </div>
+
+          <div class="result-row">
+            <dt>Total (penalización + descuento)</dt>
+            <dd id="v-res-total-pen-desc">--</dd>
+          </div>
+
+          <div class="result-row result-highlight result-final">
+            <dt>Precio final de venta</dt>
+            <dd id="v-res-final">--</dd>
+          </div>
+
+        </dl>
+
         <!-- Barra visual que ilustra cómo se compone el precio -->
-        <div class="flow" aria-hidden="true">
+        <div class="flow" id="flow-wrap" aria-hidden="true">
           <span class="flow-label">Cómo se compone el precio de mayoreo</span>
           <div class="flow-bar" id="flow-bar">
             <div class="flow-segment flow-cost" id="flow-cost"></div>
@@ -171,7 +304,7 @@
     </section>
 
     <footer class="page-footer">
-      <p>El costo del producto nunca se modifica. El descuento se aplica únicamente sobre el margen.</p>
+      <p id="footer-note">El costo del producto nunca se modifica. El descuento se aplica únicamente sobre el margen.</p>
     </footer>
 
   </main>
