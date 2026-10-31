@@ -1,3 +1,13 @@
+/* ==========================================================================
+   CALCULADORA DE MÁRGENES Y PRECIO DE MAYOREO
+   --------------------------------------------------------------------------
+   Lógica principal:
+     1) precioUnitario = costo + (costo * margen / 100)
+     2) El descuento sobre el margen SOLO afecta el margen, nunca el costo:
+          nuevoMargen   = margen - (margen * descuentoMargen / 100)
+          precioMayoreo = costo + nuevoMargen
+   ========================================================================== */
+
 (function () {
   'use strict';
 
@@ -36,8 +46,55 @@
   const labelResPrecioMayoreo = document.getElementById('label-res-precio-mayoreo');
   const labelResPrecioUnitario = document.getElementById('label-res-precio-unitario');
 
+  /* --- Modo "Precio final de venta" --- */
+  const btnModeVenta = document.getElementById('btn-mode-venta');
+  const fieldsMargen = document.getElementById('fields-margen');
+  const fieldsVenta = document.getElementById('fields-venta');
+  const resultsMargen = document.getElementById('results-margen');
+  const resultsVenta = document.getElementById('results-venta');
+  const flowWrap = document.getElementById('flow-wrap');
+  const footerNote = document.getElementById('footer-note');
+
+  const vPrecio = document.getElementById('v-precio');
+  const vComision = document.getElementById('v-comision');
+  const vIva = document.getElementById('v-iva');
+  const vDescuento = document.getElementById('v-descuento');
+  const vDescuentoTipo = document.getElementById('v-descuento-tipo');
+  const vPenalizacion = document.getElementById('v-penalizacion');
+  const vPenalizacionTipo = document.getElementById('v-penalizacion-tipo');
+  const vOtro = document.getElementById('v-otro');
+  const vOtroTipo = document.getElementById('v-otro-tipo');
+
+  const ventaInputs = [vPrecio, vComision, vIva, vDescuento, vPenalizacion, vOtro];
+  const ventaSelects = [vDescuentoTipo, vPenalizacionTipo, vOtroTipo];
+
+  const ventaErrors = {
+    precio: document.getElementById('error-v-precio'),
+    comision: document.getElementById('error-v-comision'),
+    iva: document.getElementById('error-v-iva'),
+    descuento: document.getElementById('error-v-descuento'),
+    penalizacion: document.getElementById('error-v-penalizacion'),
+    otro: document.getElementById('error-v-otro')
+  };
+
+  const ventaResults = {
+    precio: document.getElementById('v-res-precio'),
+    comision: document.getElementById('v-res-comision'),
+    iva: document.getElementById('v-res-iva'),
+    otro: document.getElementById('v-res-otro'),
+    totalDescuento: document.getElementById('v-res-total-descuento'),
+    subtotal: document.getElementById('v-res-subtotal'),
+    penalizacion: document.getElementById('v-res-penalizacion'),
+    descuento: document.getElementById('v-res-descuento'),
+    totalPenDesc: document.getElementById('v-res-total-pen-desc'),
+    final: document.getElementById('v-res-final')
+  };
+
+  const IVA_POR_DEFECTO = '13';
+
   // 'forward' = costo conocido -> calcula precio final
   // 'reverse' = precio final conocido -> calcula costo original
+  // 'venta'   = precio inicial + comisión + IVA + otro - penalización - descuento
   let mode = 'forward';
 
   /* ------------------------------------------------------------------ */
@@ -137,6 +194,11 @@
   /* Cálculo principal                                                   */
   /* ------------------------------------------------------------------ */
   function calcular() {
+    if (mode === 'venta') {
+      calcularVenta();
+      return;
+    }
+
     const costoRaw = parseValue(inputCosto.value);
     const margenRaw = parseValue(inputMargen.value);
     const descuentoRaw = parseValue(inputDescuento.value);
@@ -241,6 +303,99 @@
     updateFlowBar(costo, margenFinal);
   }
 
+  /* ------------------------------------------------------------------ */
+  /* Cálculo: Precio final de venta                                      */
+  /*   precioConComision = precio + comision + ivaComision + otro        */
+  /*   precioFinal       = precioConComision - penalizacion - descuento  */
+  /*   - comision (%) y sus montos se calculan sobre el precio inicial   */
+  /*   - IVA (%) se calcula sobre el monto de la comisión                */
+  /*   - otro / penalizacion / descuento: $ fijo o % del precio inicial  */
+  /* ------------------------------------------------------------------ */
+  function resetVentaResults() {
+    Object.values(ventaResults).forEach((el) => { el.textContent = '--'; });
+  }
+
+  function clearVentaErrors() {
+    ventaInputs.forEach((input) => {
+      const key = input.id.replace('v-', '');
+      setFieldError(input, ventaErrors[key], '');
+    });
+  }
+
+  function montoSegunTipo(valor, tipo, base) {
+    return tipo === '%' ? base * (valor / 100) : valor;
+  }
+
+  function calcularVenta() {
+    clearVentaErrors();
+
+    const precio = parseValue(vPrecio.value);
+
+    // Solo el precio inicial es obligatorio; el resto vacío = 0.
+    if (precio === null) {
+      resetVentaResults();
+      return;
+    }
+
+    const comisionPct = parseValue(vComision.value) ?? 0;
+    const ivaPct = parseValue(vIva.value) ?? 0;
+    const descuentoVal = parseValue(vDescuento.value) ?? 0;
+    const penalizacionVal = parseValue(vPenalizacion.value) ?? 0;
+    const otroVal = parseValue(vOtro.value) ?? 0;
+
+    const checks = [
+      [vPrecio, 'precio', precio, 'El precio no puede ser negativo.'],
+      [vComision, 'comision', comisionPct, 'La comisión no puede ser negativa.'],
+      [vIva, 'iva', ivaPct, 'El IVA no puede ser negativo.'],
+      [vDescuento, 'descuento', descuentoVal, 'El descuento no puede ser negativo.'],
+      [vPenalizacion, 'penalizacion', penalizacionVal, 'La penalización no puede ser negativa.'],
+      [vOtro, 'otro', otroVal, 'El valor no puede ser negativo.']
+    ];
+
+    let hasError = false;
+    checks.forEach(([input, key, value, msg]) => {
+      if (value < 0) {
+        setFieldError(input, ventaErrors[key], msg);
+        hasError = true;
+      }
+    });
+
+    if (hasError) {
+      resetVentaResults();
+      return;
+    }
+
+    const comision = precio * (comisionPct / 100);
+    const ivaComision = comision * (ivaPct / 100);
+    const otro = montoSegunTipo(otroVal, vOtroTipo.value, precio);
+    const precioConComision = precio + comision + ivaComision + otro;
+
+    const penalizacion = montoSegunTipo(penalizacionVal, vPenalizacionTipo.value, precio);
+    const descuento = montoSegunTipo(descuentoVal, vDescuentoTipo.value, precio);
+    const precioFinal = precioConComision - penalizacion - descuento;
+
+    if (precioFinal < 0) {
+      setFieldError(
+        vDescuento,
+        ventaErrors.descuento,
+        'Penalización + descuento superan el precio con comisión.'
+      );
+      resetVentaResults();
+      return;
+    }
+
+    updateResult(ventaResults.precio, formatMoney(precio));
+    updateResult(ventaResults.comision, formatMoney(comision));
+    updateResult(ventaResults.iva, formatMoney(ivaComision));
+    updateResult(ventaResults.otro, formatMoney(otro));
+    updateResult(ventaResults.totalDescuento, formatMoney(comision + ivaComision + otro));
+    updateResult(ventaResults.subtotal, formatMoney(precioConComision));
+    updateResult(ventaResults.penalizacion, formatMoney(penalizacion));
+    updateResult(ventaResults.descuento, formatMoney(descuento));
+    updateResult(ventaResults.totalPenDesc, formatMoney(penalizacion + descuento));
+    updateResult(ventaResults.final, formatMoney(precioFinal));
+  }
+
   /**
    * Actualiza el texto de un elemento resultado y dispara animación.
    */
@@ -277,40 +432,56 @@
     mode = newMode;
 
     const isReverse = mode === 'reverse';
+    const isVenta = mode === 'venta';
 
-    btnModeForward.classList.toggle('active', !isReverse);
+    btnModeForward.classList.toggle('active', mode === 'forward');
     btnModeReverse.classList.toggle('active', isReverse);
+    btnModeVenta.classList.toggle('active', isVenta);
 
-    if (isReverse) {
+    // Mostrar/ocultar bloques según el modo.
+    fieldsMargen.classList.toggle('is-hidden', isVenta);
+    fieldsVenta.classList.toggle('is-hidden', !isVenta);
+    resultsMargen.classList.toggle('is-hidden', isVenta);
+    resultsVenta.classList.toggle('is-hidden', !isVenta);
+    flowWrap.classList.toggle('is-hidden', isVenta);
+
+    if (isVenta) {
+      modeHint.textContent = 'Al precio inicial le sumás comisión, IVA sobre la comisión y otros cargos; luego restás penalización y descuento.';
+      footerNote.textContent = 'Comisión, otro, penalización y descuento en % se calculan sobre el precio inicial; el IVA se calcula sobre la comisión.';
+    } else if (isReverse) {
       labelCosto.textContent = 'Precio final de venta';
       modeHint.textContent = 'Conocés el precio final y querés saber cuál fue el costo original (margen calculado sobre el precio de venta).';
       labelResCosto.textContent = 'Precio final (dato ingresado)';
       labelResPrecioMayoreo.textContent = 'Costo del producto (calculado)';
       labelResPrecioUnitario.textContent = 'Costo antes del descuento';
+      footerNote.textContent = 'El costo del producto nunca se modifica. El descuento se aplica únicamente sobre el margen.';
     } else {
       labelCosto.textContent = 'Costo del producto';
       modeHint.textContent = 'Conocés el costo y querés saber el precio final (margen calculado sobre el costo).';
       labelResCosto.textContent = 'Costo del producto';
       labelResPrecioMayoreo.textContent = 'Precio de mayoreo';
       labelResPrecioUnitario.textContent = 'Precio unitario';
+      footerNote.textContent = 'El costo del producto nunca se modifica. El descuento se aplica únicamente sobre el margen.';
     }
 
     setFieldError(inputCosto, errorCosto, '');
     setFieldError(inputMargen, errorMargen, '');
     setFieldError(inputDescuento, errorDescuento, '');
+    clearVentaErrors();
 
     calcular();
   }
 
   btnModeForward.addEventListener('click', () => setMode('forward'));
   btnModeReverse.addEventListener('click', () => setMode('reverse'));
+  btnModeVenta.addEventListener('click', () => setMode('venta'));
 
   /* ------------------------------------------------------------------ */
   /* Eventos                                                             */
   /* ------------------------------------------------------------------ */
 
   // Cálculo automático mientras el usuario escribe.
-  inputs.forEach((input) => {
+  [...inputs, ...ventaInputs].forEach((input) => {
     input.addEventListener('input', (e) => {
       sanitizeNumericInput(e);
       calcular();
@@ -341,6 +512,9 @@
     });
   });
 
+  // Selectores $ / % del modo venta.
+  ventaSelects.forEach((sel) => sel.addEventListener('change', calcular));
+
   // Botón "Calcular" (el cálculo ya es automático, pero se respeta el botón).
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -349,6 +523,19 @@
 
   // Botón "Limpiar".
   btnLimpiar.addEventListener('click', () => {
+    if (mode === 'venta') {
+      ventaInputs.forEach((input) => {
+        input.value = '';
+        input.dataset.prevValue = '';
+      });
+      vIva.value = IVA_POR_DEFECTO;
+      ventaSelects.forEach((sel) => { sel.value = '%'; });
+      clearVentaErrors();
+      resetVentaResults();
+      vPrecio.focus();
+      return;
+    }
+
     inputs.forEach((input) => {
       input.value = '';
       input.dataset.prevValue = '';
@@ -366,5 +553,6 @@
   /* Estado inicial                                                      */
   /* ------------------------------------------------------------------ */
   resetResults();
+  resetVentaResults();
 
 })();
