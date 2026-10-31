@@ -196,6 +196,7 @@ button{
    ========================================================================== */
 .mode-toggle{
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 4px;
   margin-bottom: 12px;
@@ -209,9 +210,10 @@ button{
   background: transparent;
   color: var(--color-text-muted);
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 600;
   padding: 10px 8px;
+  white-space: nowrap;
   border-radius: calc(var(--radius-sm) - 4px);
   cursor: pointer;
   transition: background 0.25s var(--ease), color 0.25s var(--ease), box-shadow 0.25s var(--ease);
@@ -553,4 +555,34 @@ button{
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+
+/* ==========================================================================
+   MODO "PRECIO FINAL DE VENTA"
+   ========================================================================== */
+.is-hidden{
+  display: none !important;
+}
+
+.mode-btn[data-mode="venta"]{
+  flex-basis: 100%;
+}
+
+.unit-select{
+  border: none;
+  outline: none;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 6px;
+  padding: 8px 10px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+}
+
+.unit-select:focus-visible{
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
